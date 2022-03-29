@@ -1,4 +1,5 @@
 abalone <- read.csv(here::here("data", "abalone_raw.csv"))
+library(ggplot2)
 
 #' The data for this project relate to measurements
 #' of abalone, a species of aquatic snail sometimes
@@ -26,7 +27,6 @@ abalone |>
 
 
 #' It seems that weight increases nonlinearly with number of rings. This makes sense, as many organisms grow at a nonlinear rate.
-library(ggplot2)
 ggplot(abalone_long, aes(x = Rings, y = Value, color = Measure)) +
   geom_point() +
   geom_smooth(se = FALSE)
