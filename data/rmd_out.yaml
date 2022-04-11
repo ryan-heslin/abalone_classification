@@ -1,0 +1,12 @@
+---
+title: ""
+author: "Ryan Heslin, Chenzi Liao, Sebastian Zovko"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+header-includes:
+  - \setlength{\parindent}{2em}
+  - \setlength{\parskip}{2em}
+output:
+  pdf_document:
+	highlight: "kate"
+    df_print: "kable"
+---

@@ -1,14 +1,21 @@
 
+```{r }
 abalone <- read.csv(here::here("data", "abalone_raw.csv"))
 source(here::here("R", "utils.R"))
 library(ggplot2)
+```
 
-#' The three separate weight variables don't quite sum to total weight, suggesting measurement error.
-#' Still, including all three would be a bad idea because it would make the model matrix nearly singular.
+The three separate weight variables don't quite sum to total weight, suggesting measurement error.
+Still, including all three would be a bad idea because it would make the model matrix nearly singular.
+
+```{r }
 summary(with(abalone, Whole.weight - Shucked.weight - Viscera.weight - Shell.weight))
+```
 
-#' I fit an initial $J-1$ logits baseline model using sex, dimensions,
-#' and whole weight as predictors.
+I fit an initial $J-1$ logits baseline model using sex, dimensions,
+and whole weight as predictors.
+
+```{r }
 library(nnet)
 abalone[["Sex"]] <- factor(abalone[["Sex"]], levels = c("I", "F", "M"))
 
@@ -20,11 +27,13 @@ initial_model <- multinom(Sex ~ Whole.weight + Length + Diameter + Height + Ring
 
 summary(initial_model)
 anova(update(initial_model, . ~ . - .), initial_model)
+```
 
-#' Most of the estimated coefficients are
-#' significant under Wald tests, even after applying
-#' the Bonferroni correction to $p$-values.
+Most of the estimated coefficients are
+significant under Wald tests, even after applying
+the Bonferroni correction to $p$-values.
 
+```{r }
 summarized <- broom::tidy(initial_model)
 summarized[["p.value"]] <- p.adjust(summarized[["p.value"]], method = "bonferroni")
 summarized
@@ -33,16 +42,21 @@ rich <- generate_rich_model(initial_model,
   model_data = train[, colnames(coef(initial_model))[-1]],
   model_formula = Sex ~ Whole.weight + Length + Diameter + Height + Rings
 )
+```
 
-#' Stepwise selection chooses a model with a few interactions. Note that using stepwise selection violates some of the
-#' assumptions behind inferential model statistics.
-#+ results = "hide"
+Stepwise selection chooses a model with a few interactions. Note that using stepwise selection violates some of the
+assumptions behind inferential model statistics.
+
+```{r results = "hide"}
 step_model <- suppressMessages(step(initial_model, scope = list(upper = rich, lower = Sex ~ Whole.weight + Length + Diameter + Height + Rings)))
 step_residual <- extract_by_level(residuals(step_model, "std.res"), as.integer(train[["Sex"]]))
 step_fitted <- extract_by_level(step_model[["fitted.values"]], as.integer(train[["Sex"]]))
 step_model
+```
 
-#' Average standardized residuals are notably lower for infants than for adults
+Average standardized residuals are notably lower for infants than for adults
+
+```{r }
 ggplot(
   data.frame(step_fitted, step_residual,
     Sex = train[["Sex"]],
@@ -54,9 +68,11 @@ ggplot(
   geom_hline(aes(yintercept = yintercept, color = Sex), show.legend = FALSE)
 
 ## Model Testing
+```
 
-#' A likelihood-ratio test of the step-selected model over the initial model is highly significant. A goodness-of-fit test for the step-selected model has a p-value that is computationally 1, providing no evidence against the null of a good fit
+A likelihood-ratio test of the step-selected model over the initial model is highly significant. A goodness-of-fit test for the step-selected model has a p-value that is computationally 1, providing no evidence against the null of a good fit
 
+```{r }
 lr_test(initial_model, step_model)
 pchisq(sum(extract_by_level(
   residuals(step_model, "pearson"),
@@ -64,24 +80,34 @@ pchisq(sum(extract_by_level(
 )^2),
 df = nrow(train) - length(coef(step_model)), lower.tail = FALSE
 )
+```
 
-#' A type II ANOVA test shows that all predictors aside from `diameter` significantly improve the fit when included. `Whole.weight` is by far the most important, followed by `Rings` and the interactions.
-#'
+A type II ANOVA test shows that all predictors aside from `diameter` significantly improve the fit when included. `Whole.weight` is by far the most important, followed by `Rings` and the interactions.
+
+
+```{r }
 car::Anova(step_model)
+```
 
-#' Next I try refitting the model with all four available weight variables (including replacing the interaction) and comparing AIC. It turns out whole weight has the lowest, but the differences are minor.
+Next I try refitting the model with all four available weight variables (including replacing the interaction) and comparing AIC. It turns out whole weight has the lowest, but the differences are minor.
+
+```{r }
 weight_vars <- c("Whole.weight", "Shucked.weight", "Viscera.weight", "Shell.weight")
 names(weight_vars) <- weight_vars
 weight_vars <- lapply(weight_vars, as.symbol)
 
-#+ results = "hide"
+```
+```{r results = "hide"}
 lapply(weight_vars, function(x) {
   update_formula(step_model, Whole.weight, x, indirect = TRUE)[["AIC"]]
 })
 
 train_preds <- predict(step_model, newdata = train, type = "class")
+```
 
-#' Plotting predicted class by height and width shows again that infants are well separated from adults.
+Plotting predicted class by height and width shows again that infants are well separated from adults.
+
+```{r }
 ggplot(
   data.frame(train,
     Predicted = train_preds,
@@ -99,10 +125,13 @@ ggplot(
 
 
 ## Model Validation
+```
 
-#' On both training and testing sets, sensitivity, specificity, and precision are much higher for the infant than the adult classes. However, test error
-#' was only a little higher than train error.  Still,
-#'
+On both training and testing sets, sensitivity, specificity, and precision are much higher for the infant than the adult classes. However, test error
+was only a little higher than train error.  Still,
+
+
+```{r }
 mean(train_preds == train[["Sex"]])
 train_cm <- confusion_matrix(train[["Sex"]], train_preds)
 train_cm
@@ -114,3 +143,5 @@ test_cm <- confusion_matrix(test[["Sex"]], test_preds)
 test_cm
 analyze_cm(test_cm)
 analyze_cm(train_cm) - analyze_cm(test_cm)
+```
+
