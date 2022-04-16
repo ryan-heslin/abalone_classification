@@ -1,3 +1,32 @@
+#' ---
+#' title: "`r params$title`"
+#' author: "Ryan Heslin"
+#' date: "`r format(Sys.Date(), '%B %e, %Y')`"
+#' header-includes:
+#'  - \setlength{\parindent}{2em}
+#'  - \setlength{\parskip}{1em}
+#' params:
+#'    title: "Abalone Exploratory Data Analysis"
+#' urlcolor: "blue"
+#' output:
+#'  pdf_document:
+#'    highlight: "kate"
+#'    df_print: "kable"
+#' ---
+#'
+#' ```{r setup, include=FALSE}
+#' knitr::opts_chunk$set(
+#'  echo = TRUE,
+#'  comment = "",
+#'  fig.pos = "",
+#'  message = FALSE,
+#'  tidy = "styler",
+#'  warning = FALSE,
+#'  fig.align = "center",
+#'  highlight = TRUE
+#' )
+#' ```
+#'
 abalone <- read.csv(here::here("data", "abalone_raw.csv"))
 library(ggplot2)
 

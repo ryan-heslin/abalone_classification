@@ -55,8 +55,8 @@ extract_by_level <- function(data, indices) {
   data[cbind(seq_len(nrow(data)), indices)]
 }
 
-confusion_matrix <- function(actual, predicted) {
-  table(truth = actual, predicted = predicted)
+confusion_matrix <- function(actual, predicted, dim_names = c("truth", "predicted")) {
+  unclass(table(actual, predicted, dnn = dim_names))
 }
 
 # Extract class-specific sensitivity, specificity, and precision from a confusion matrix
@@ -70,3 +70,5 @@ analyze_cm <- function(cm) {
     precision = diag(cm) / colSums(cm)
   )
 }
+
+

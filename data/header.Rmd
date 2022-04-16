@@ -1,0 +1,28 @@
+---
+title: "`r params$title`"
+author: "Ryan Heslin, Chenxi Liao, Sebastian Zovko"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+header-includes:
+  - \setlength{\parindent}{2em}
+  - \setlength{\parskip}{2em}
+params:
+    title: ""
+output:
+  pdf_document:
+    highlight: "kate"
+    df_print: "kable"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = "",
+  fig.pos = "",
+  message = FALSE,
+  tidy = "styler",
+  warning = FALSE,
+  fig.align = "center",
+  highlight = TRUE
+)
+```
+
