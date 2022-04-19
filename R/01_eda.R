@@ -1,6 +1,6 @@
 #' ---
 #' title: "`r params$title`"
-#' author: "Ryan Heslin"
+#' author: "Ryan Heslin, Chenxi Liao, Sebastian Zovko"
 #' date: "`r format(Sys.Date(), '%B %e, %Y')`"
 #' header-includes:
 #'  - \setlength{\parindent}{2em}

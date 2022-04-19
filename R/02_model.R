@@ -263,11 +263,12 @@ c(
 #' On both training and testing sets, sensitivity, specificity, and precision are much higher for the infant than the adult classes. However, test error
 #' was only a little higher than train error.  Still,
 #' overall test accuracy is above 50%, much better than the 36% (the highest class proportion) achieved by the naive classifier.
-mean(train_preds == train[["Sex"]])
+#+ results = "asis"
 train_cm <- confusion_matrix(train[["Sex"]], train_preds)
 as.data.frame(train_cm)
+cat("Overall accuracy:", mean(train_preds == train[["Sex"]]), "\n")
 
-#' Class-Specific Statistics for Training Set
+#' # Class-Specific Statistics for Training Set
 test_preds <- predict(step_model, newdata = test, type = "class")
 as.data.frame(analyze_cm(train_cm))
 
