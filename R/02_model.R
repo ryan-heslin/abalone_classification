@@ -44,16 +44,42 @@
 
 #' Wild abalone populations have collapsed from overharvesting, but they are farmed commercially for their meat and pearls.
 #' Predicting sex is of interest because the eggs of adult female abalone are useful to breeders and scientists (Bradley, 2010).
-
 abalone <- read.csv(here::here("data", "abalone_raw.csv"))
 source(here::here("R", "utils.R"))
 library(ggplot2)
 theme_set(theme_minimal())
+invisible()
+
+#' # Available Predictors
+#' \begin{itemize}
+#' \item Length
+#' \item Diameter
+#' \item Height
+#' \item Weight
+#' \begin{itemize}
+#' \item Whole
+#' \item Viscera
+#' \item Shucked
+#' \item Shell
+#' \end{itemize}
+#' \item Rings (roughly corresponds to abalone age)
+#' \end{itemize}
+
+#' # Abalone Weight by Sex
+#' Infant abalone weigh substantially less than adults, but male and female adult abalone weigh about the same. This illustrates the main challenge of this classification task: infant abalone are easy to distinguish from adults, but male and female adults are hard to distinguish from each other.
+invisible()
+
+#' # Abalone Weight by Sex Visualized
+abalone_long <- abalone |> tidyr::pivot_longer(ends_with("weight"), names_to = "Measure", values_to = "Value", names_transform = function(x) gsub("\\..*", "", x))
+ggplot(abalone_long, aes(x = Sex, fill = Sex, y = Value)) +
+  geom_violin(alpha = .5) +
+  facet_wrap(~Measure, ncol = 1, scales = "free_y") +
+  labs(title = "Abalone Weight by Sex", y = "Weight")
 
 #' # The Data in Detail
 #' The full data have `r nrow(abalone)` observations. The dataset (Kaggle, 2020) is standard in machine learning research. It may be obtained [here](https://www.kaggle.com/datasets/rodolfomendes/abalone-dataset).
 #' The three separate weight variables don't quite sum to total weight, suggesting measurement error.
-#' Still, including all three would be a bad idea because it would make the model matrix nearly singular. We will select one to use.
+#' Still, including all three would be a bad idea because it would make the model matrix nearly singular. We will select one to use. This table summariezes the difference of whole weight and the sum of the other weight variables
 summary(with(abalone, Whole.weight - Shucked.weight - Viscera.weight - Shell.weight)) |>
   as.list() |>
   list2DF()
@@ -105,8 +131,8 @@ rich <- generate_rich_model(initial_model,
 )
 
 #' # Choosing a Model by Stepwise Selection
-#' Stepwise selection by AIC chooses a model with a few interactions. Note that using stepwise selection violates some of the
-#' assumptions behind inferential model statistics.
+#' Stepwise selection by AIC chooses a model with a few interactions. The upper scope includes all
+#' pairwise interactions and quadratic variable terms.
 #+ results = "hide"
 step_model <- suppressMessages(step(initial_model, scope = list(
   upper = rich,
