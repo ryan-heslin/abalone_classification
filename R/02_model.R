@@ -3,15 +3,16 @@
 #' author: "Ryan Heslin, Chenxi Liao, Sebastian Zovko"
 #' date: "`r format(Sys.Date(), '%B %e, %Y')`"
 #' output:
-#'  beamer_presentation:
-#'    theme: "Ilmenau"
-#'    colortheme: "beaver"
-#'    highlight: "kate"
-#'    df_print: "kable"
-#'    includes:
-#'      in_header: "../data/presentation_preamble.tex"
+#'   beamer_presentation:
+#'     theme: "Ilmenau"
+#'     colortheme: "beaver"
+#'     highlight: "kate"
+#'     includes:
+#'       in_header: "../data/presentation_preamble.tex"
+#'     df_print: "kable"
 #' params:
-#'   title: "Abalone Classification"
+#'   title: "Classifying Abalone Sex"
+#' urlcolor: "blue"
 #' ---
 #'
 #' ```{r setup, include=FALSE}
@@ -32,10 +33,10 @@
 
 
 #' # Introduction
-#' The goal of this analysis is to create an inferential model of the sex of abalone, a type of saltwater mollusk. This is a classification problem with three classes: infant, (adult) male, and (adult) female. Avaliable features include:
+#' The goal of this analysis was to create an inferential model of the sex of abalone, a type of saltwater mollusk. This is a classification problem with three classes: infant, (adult) male, and (adult) female. Avaliable features include:
 
 #' \begin{itemize}
-#' \item Measurements of abalone dimensions
+#' \item Measurements of abalone dimensions (length, diameter, height)
 #' \item The weights of different parts of the abalone, as well as the entire animal
 #' \item The number of rings of the abalone (abalone grow rings as they age)
 #' \end{itemize}
@@ -78,8 +79,8 @@ ggplot(abalone_long, aes(x = Sex, fill = Sex, y = Value)) +
 
 #' # The Data in Detail
 #' The full data have `r nrow(abalone)` observations. The dataset (Kaggle, 2020) is standard in machine learning research. It may be obtained [here](https://www.kaggle.com/datasets/rodolfomendes/abalone-dataset).
-#' The three separate weight variables don't quite sum to total weight, suggesting measurement error.
-#' Still, including all three would be a bad idea because it would make the model matrix nearly singular. We will select one to use. This table summariezes the difference of whole weight and the sum of the other weight variables
+#' The three separate weight variables summed almost exactly to total weight, suggesting measurement error.
+#' Still, including all three would be a bad idea because it would make the model matrix nearly singular. We selected only one to use. This table summarizes the difference of whole weight and the sum of the other weight variables.
 summary(with(abalone, Whole.weight - Shucked.weight - Viscera.weight - Shell.weight)) |>
   as.list() |>
   list2DF()
@@ -95,6 +96,7 @@ initial_model <- multinom(Sex ~
 Whole.weight + Length + Diameter + Height + Rings, data = train)
 
 #' # General Approach
+#' First, we split the data, reserving 80% of observations for a training set and the remaining 20% for a test set, after setting a random seed to ensure reproducibility.
 #' We fit an initial $J-1$  (here $J = 3$) logits baseline model using sex, dimensions,
 #' and whole weight as predictors. This model is appropriate for nominal outcomes, which abalone sex is because it has no logical ordering.
 #' This model consists of $J-1$ logit models, each predicting the log odds of a given class versus a baseline class.
@@ -105,17 +107,16 @@ invisible()
 #' # Initial Model Fitting and Data Partitioning
 broom::tidy(initial_model)[, -4]
 
-
 #+ results ="hide"
 null_model <- update(initial_model, . ~ . - .)
 #' # Overall Likelihood Ratio Test of Initial Model
-#' The overall likelihood ratio test of the initial model is highly significant, so we reject the null hypothesis of no linear relationship
+#' The overall likelihood ratio test of the initial model was highly significant, so we rejected the null hypothesis of no linear relationship
 out <- as.data.frame(anova(null_model, initial_model))
 out[["Model"]] <- c("Null", "Full")
 out
 
 #' # Wald Tests of Coefficients
-#' Most of the estimated coefficients are
+#' Most of the estimated coefficients were
 #' significant under Wald tests, even after applying
 #' the Bonferroni correction to $p$-values.
 
@@ -131,7 +132,7 @@ rich <- generate_rich_model(initial_model,
 )
 
 #' # Choosing a Model by Stepwise Selection
-#' Stepwise selection by AIC chooses a model with a few interactions. The upper scope includes all
+#' We used stepwise selection by AIC to choose a model with a few interactions. The upper scope included all
 #' pairwise interactions and quadratic variable terms.
 #+ results = "hide"
 step_model <- suppressMessages(step(initial_model, scope = list(
@@ -147,11 +148,12 @@ step_fitted <- extract_by_level(
   as.integer(train[["Sex"]])
 )
 
-#' The Stepwise-Selected Model
-broom::tidy(step_model)[1:6, -4]
+#' # The Stepwise-Selected Model
+#' Only variables for the female class are shown.
+broom::tidy(step_model)[1:9, -4]
 
 #' # Residuals by Class
-#' Average standardized residuals are notably lower for infants than for adults, consistent with infants being easier to classify.
+#' Average standardized residuals were notably lower for infants than for adults, consistent with infants being easier to classify.
 ggplot(
   data.frame(step_fitted, step_residual,
     Sex = train[["Sex"]],
@@ -159,12 +161,16 @@ ggplot(
   ),
   aes(x = seq_len(nrow(train)), y = step_residual, color = Sex)
 ) +
-  geom_point(alpha = .5, size = 1.5) +
-  geom_hline(aes(yintercept = yintercept, color = Sex), show.legend = FALSE) +
+  geom_point(alpha = .1, size = 1.5) +
+  geom_hline(aes(yintercept = yintercept, color = Sex),
+    size = 2, show.legend = FALSE
+  ) +
   theme_minimal() +
   labs(
     x = "Case",
-    y = "Studentized Residual", title = "Studentized Residuals by True Class"
+    y = "Studentized Residual",
+    title = "Studentized Residuals by True Class",
+    subtitle = "Horizontal lines indicate average residuals by class"
   )
 ggsave(here::here("figure", "student-resid.jpg"))
 
@@ -181,24 +187,13 @@ ggplot(data.frame(step_fitted, step_delta_chisq, Class = train[["Sex"]]), aes(x 
 #' A likelihood-ratio test of the step-selected model over the initial model is highly significant. A goodness-of-fit test for the step-selected model has a p-value that is computationally 1, providing no evidence against the null of a good fit
 
 lr_test(initial_model, step_model)
-# df <- nrow(train) - length(coef(step_model))
-# chisq_stat <- sum(extract_by_level(
-# residuals(step_model, "pearson"),
-# as.integer(train[["Sex"]])
-# )^2)
-# cat(
-# "Statistic:", chisq_stat, "\n",
-# "Degrees of Freedom:", df, "\n",
-# "Threshold:", qchisq(.95, df = df), "\n",
-# "p-value:", pchisq(chisq_stat, df = df, lower.tail = FALSE), "\n"
-# )
 
 #' # Type II ANOVA
 #' A type II ANOVA test shows that all predictors aside from `diameter` significantly improve the fit when included. `Whole.weight` is by far the most important, followed by `Rings` and the interactions.
 as.data.frame(car::Anova(step_model))
 
 #' # Comparing Different Weight Variables
-#' Next we try refitting the model with each of all four available weight variables (including replacing the interaction) and comparing AIC. (AIC has no inherent interpretation, but is useful when comparing variants of the same model). It turns out whole weight has the lowest, but the differences are minor.
+#' Next, we tried refitting the model with each of all four available weight variables (including replacing the interaction) and comparing AIC. (AIC has no inherent interpretation, but is useful when comparing variants of the same model). Whole weight has the lowest, but the differences are minor.
 weight_vars <- c("Whole.weight", "Shucked.weight", "Viscera.weight", "Shell.weight")
 names(weight_vars) <- weight_vars
 weight_vars <- lapply(weight_vars, as.symbol)
@@ -216,7 +211,6 @@ train_preds <- predict(step_model, newdata = train, type = "class")
 #' # Class Separation by Height and Width
 #' Plotting predicted class by height and width shows again that infants are well separated from adults.
 
-#'  # Predicted Class by Height and Width
 ggplot(
   data.frame(train,
     Predicted = train_preds,
@@ -235,8 +229,8 @@ ggplot(
 
 #' # Comparison with Binary Classification
 
-#' It is obvious that distinguising infants from adults is much easier than male from female adults.
-#' For comparison, we combine the male and female classes into "adult" and fit a binomial model.
+#' It was obvious that distinguising infants from adults was much easier than distinguising male from female adults.
+#' For comparison, we combined the male and female classes into "adult" and fit a binomial model.
 train[["Sex_binary"]] <- factor(ifelse(train[["Sex"]] == "I", "I", "A"),
   levels = c("I", "A")
 )
@@ -250,7 +244,7 @@ broom::tidy(binary_model)[, -4]
 #' # Deviance Comparison
 #' While a direct likelihood ratio test is inappropriate because these models use different versions of
 #' the response, it is worth noting this binary model
-#' has less than half the deviance of the step-selected model.
+#' had less than half the deviance of the step-selected model.
 c(
   "Binary Deviance" = deviance(binary_model),
   "Three-Class Deviance" = deviance(step_model)
@@ -260,33 +254,35 @@ c(
 
 #' # Model Validation
 
-#' On both training and testing sets, sensitivity, specificity, and precision are much higher for the infant than the adult classes. However, test error
+#' On both training and testing sets, sensitivity, specificity, and precision were much higher for the infant than the adult classes. However, test error
 #' was only a little higher than train error.  Still,
-#' overall test accuracy is above 50%, much better than the 36% (the highest class proportion) achieved by the naive classifier.
+#' overall test accuracy was above 50%, much better than the 36% (the highest class proportion) achieved by the naive classifier.
 #+ results = "asis"
 train_cm <- confusion_matrix(train[["Sex"]], train_preds)
 as.data.frame(train_cm)
-cat("Overall accuracy:", mean(train_preds == train[["Sex"]]), "\n")
+cat("Overall training set accuracy was ", mean(train_preds == train[["Sex"]]), ".", sep = "\n")
 
-#' # Class-Specific Statistics for Training Set
+#' # Training Set Class-Specific Metrics
 test_preds <- predict(step_model, newdata = test, type = "class")
 as.data.frame(analyze_cm(train_cm))
 
 #' # Test Set Results
-#' Results on the test set are very similar, suggesting minimal generalization error. Overall test accuracy is `r mean(test_preds == test[["Sex"]])`.
+#' Results on the test set were very similar, suggesting minimal generalization error. Overall test accuracy was `r mean(test_preds == test[["Sex"]])`.
 test_cm <- confusion_matrix(test[["Sex"]], test_preds)
 as.data.frame(test_cm)
+
+#' # Test Set Class-Specific Metrics
 as.data.frame(analyze_cm(test_cm))
 
 #' # Test-Train Comparison and Overall Accuracy
-#' The difference of the two confusion matrices shows that test and train performance are similar.
+#' The difference of the two confusion matrices shows that test and train performance were similar.
 as.data.frame(analyze_cm(train_cm) - analyze_cm(test_cm))
 
 #' # Conclusion
-#' Male and female adult abalone are difficult to distinguish using predictors avaliable in this dataset. Using a $J-1$ logits baseline model with interaction terms, approximately 50% classification accuracy was achieved.
+#' Male and female adult abalone are difficult to distinguish using predictors avaliable in this dataset. Using a $J-1$ logits baseline model with interaction terms, approximately 50% classification accuracy was achieved with minimal generalization error.
 #' However, infant abalone are smaller than adults of either sex, making them significantly easier to
-#' classify accurately. Future research should focus on finding easily measured predictors for which the adult sexes are easily distinguished.
-#' Published research tends to focus on classifying abalone age in years (e.g, Abdelbar [1998]). For the reason noted above, this in some ways an easier problem than classifying sex.
+#' classify accurately. Future research should focus on finding easily measured predictors with which the adult sexes are easily distinguished.
+#' Published research tends to focus on classifying abalone age in years (e.g, Abdelbar [1998]). For the reason noted above, this is in some ways an easier problem than classifying sex.
 invisible(NULL)
 
 #' # References
